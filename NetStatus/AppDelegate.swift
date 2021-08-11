@@ -1,8 +1,8 @@
 //
 //  AppDelegate.swift
-//  PCStatus
+//  NetStatus
 //
-//  Created by guilain yl on 2021/8/9.
+//  Created by guilain yl on 2021/8/11.
 //
 
 import Cocoa
@@ -10,18 +10,37 @@ import SwiftUI
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
-    @IBOutlet weak var menu: NSMenu!
+    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+    private let interval = 3
+    private var g_ibytes:UInt32 = 0
+    private var g_obytes:UInt32 = 0
+    private var g_fontSize:CGFloat = 11
     
-    let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    
-    let interval = 3
-    
-    var g_ibytes:UInt32 = 0
-    var g_obytes:UInt32 = 0
-
     func applicationDidFinishLaunching(_ aNotification: Notification) {
-
+        // Create the SwiftUI view that provides the window contents.
+        let barHeight = NSApplication.shared.mainMenu?.menuBarHeight
+        testCalcFontSize(barHeight:barHeight!)
+        
+        let menu = NSMenu()
+        menu.addItem(withTitle: "退出", action: #selector(quitApp), keyEquivalent: "")
         statusItem.menu = menu
+        
+        start();
+    }
+    
+    private func testCalcFontSize(barHeight:CGFloat){
+        for i in stride(from: g_fontSize, through: 0, by: -0.1) {
+            let textAttr = [NSAttributedString.Key.font: NSFont.systemFont(ofSize: i)]
+            let iText = NSAttributedString(string: "↑ 0 B/s\n↓ 0 B/s", attributes: textAttr)
+            let iRect = iText.boundingRect(with: NSSize(width: 100, height: 100), options: .usesLineFragmentOrigin)
+            if(iRect.height <= barHeight){
+                g_fontSize = i
+                break
+            }
+        }
+    }
+    
+    private func start(){
         let observer = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
         
         Timer.scheduledTimer(withTimeInterval: TimeInterval(interval), repeats: true){ (ktimer) in
@@ -33,7 +52,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
-    func showText(name:UnsafePointer<Int8>,ibytes:UInt32,obytes:UInt32){
+    private func showText(name:UnsafePointer<Int8>,ibytes:UInt32,obytes:UInt32){
         let str:String? = String(validatingUTF8: name)?.trimmingCharacters(in: .whitespaces)
         
         if(str != "en0"){
@@ -43,8 +62,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let text = generateText(ibytes: ibytes, obytes: obytes)
 
         if let button=statusItem.button{
-            button.font=NSFont.systemFont(ofSize: 10)
-            button.title=text
+            button.font = NSFont.systemFont(ofSize: g_fontSize)
+            button.title = text
         }
     }
     
@@ -91,13 +110,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let t = String(format:"%.2f",i)
         return "\(t) GB/s"
     }
-    
-    @IBAction func quitApp(_ sender: Any) {
-        NSApplication.shared.terminate(self)
-    }
 
     func applicationWillTerminate(_ aNotification: Notification) {
         // Insert code here to tear down your application
+    }
+    
+    @objc func quitApp(_ sender: Any) {
+        NSApplication.shared.terminate(self)
     }
 }
 
